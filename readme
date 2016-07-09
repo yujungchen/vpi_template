@@ -1,0 +1,4 @@
+This repo is a simple vpi framework using c/c++ code for RTL simulation to abstract the hardware simulation. 
+
+The simulation environment compiles verilog code with iverilog, and gtkwave to visulaize the waveform. 
+
