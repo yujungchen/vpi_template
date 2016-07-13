@@ -10,8 +10,6 @@ module buffer(
    reg [31:0] Buf [0:15];
 
    assign rData = (en && ~write) ? Buf[Addr] : 32'b0;
- 
-
 
    always @ (posedge clk) begin
       if (reset) begin

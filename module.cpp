@@ -36,10 +36,7 @@ static int module_calltf(char* user_data) {
   val_DataIn.format = vpiIntVal;
   vpi_get_value(h_DataIn, &val_DataIn);
   m_DataIn = val_DataIn.value.integer;
-  //float *Temp;
-  //Temp = (float*)(&m_DataIn);
-  //vpi_printf("Data In: %d\n", m_DataIn);
-
+  
   // State 
   h_State = vpi_scan(args_iter);
   val_State.format = vpiIntVal;
@@ -67,6 +64,8 @@ static int module_calltf(char* user_data) {
 
   //vpi_printf("\nCall module done. %d\n", argval_1.value.integer);
 
+  float *InputCast;
+
   switch(m_State) {
     case IDLE:{
       
@@ -83,8 +82,10 @@ static int module_calltf(char* user_data) {
     case COLLECT:{
         int CurrentValue = m_Counter;
 
-        val_DataIn.value.integer = Buffer[CurrentValue];
-        if(CurrentValue == 3) {
+        InputCast = (float*)(&m_DataIn);
+        vpi_printf("Data In: %f\n", *InputCast);
+
+        if(CurrentValue == 8) {
           val_State.value.integer = 2;
           val_Request.value.integer = 0;
           val_Counter.value.integer = 0;
@@ -92,6 +93,9 @@ static int module_calltf(char* user_data) {
         else {
           CurrentValue = CurrentValue + 1;
           val_Counter.value.integer = CurrentValue;
+          val_Address.value.integer = CurrentValue;
+          
+
         }
 
         if(CurrentValue == 1)
