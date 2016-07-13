@@ -1,6 +1,7 @@
 #include  <vpi_user.h>
 #include "module.h"
 
+#define READ_DATA_CYCLE 8
 
 typedef enum {
   IDLE = 0, 
@@ -85,7 +86,7 @@ static int module_calltf(char* user_data) {
         InputCast = (float*)(&m_DataIn);
         vpi_printf("Data In: %f\n", *InputCast);
 
-        if(CurrentValue == 8) {
+        if(CurrentValue == READ_DATA_CYCLE) {
           val_State.value.integer = 2;
           val_Request.value.integer = 0;
           val_Counter.value.integer = 0;
