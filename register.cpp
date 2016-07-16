@@ -2,7 +2,7 @@
 #include "module.h"
 
 
-int *Buffer;
+float *Buffer;
 
 
 static int fn_compiletf(char* user_data) {

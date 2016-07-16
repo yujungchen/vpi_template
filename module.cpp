@@ -1,13 +1,52 @@
 #include  <vpi_user.h>
 #include "module.h"
 
-#define READ_DATA_CYCLE 8
 
-typedef enum {
-  IDLE = 0, 
-  COLLECT = 1,
-  COMPUTE = 2
-} BarycentricState;
+Vec3 VireportTran(Vec3 Vtx) {
+  Vec3 Proj_Vtx;
+  Proj_Vtx.x = 0.0f;
+  Proj_Vtx.y = 0.0f;
+  Proj_Vtx.z = 0.0f;
+  float HalfWidth = (float)WIDTH / 2.0f;
+  float HalfHeight = (float)HEIGHT / 2.0f;
+
+  Proj_Vtx.x = Vtx.x * HalfWidth + HalfWidth;
+  Proj_Vtx.y = Vtx.y * HalfHeight + HalfHeight;
+
+  return Proj_Vtx;
+}
+
+void ComputeCoefficient(float *x10, float *x20, float *y10, float *y20, float *det) {
+
+  Vec3 Vtx[3];
+  Vec3 Proj_Vtx[3];
+  Vtx[0].x = Buffer[0];
+  Vtx[0].y = Buffer[1];
+  Vtx[0].z = Buffer[2];
+
+  Vtx[1].x = Buffer[3];
+  Vtx[1].y = Buffer[4];
+  Vtx[1].z = Buffer[5];
+
+  Vtx[2].x = Buffer[6];
+  Vtx[2].y = Buffer[7];
+  Vtx[2].z = Buffer[8];
+
+  Proj_Vtx[0] = VireportTran(Vtx[0]);
+  Proj_Vtx[1] = VireportTran(Vtx[1]);
+  Proj_Vtx[2] = VireportTran(Vtx[2]);
+
+  *x10 = Proj_Vtx[1].x - Proj_Vtx[0].x;
+  *x20 = Proj_Vtx[2].x - Proj_Vtx[0].x;
+
+  *y10 = Proj_Vtx[1].y - Proj_Vtx[0].y;
+  *y20 = Proj_Vtx[2].y - Proj_Vtx[0].y;
+
+  *det = (*x10) * (*y20) - (*x20) * (*y10);
+}
+
+
+
 
 static int module_compiletf(char* user_data) {
   return 0;
@@ -84,7 +123,9 @@ static int module_calltf(char* user_data) {
         int CurrentValue = m_Counter;
 
         InputCast = (float*)(&m_DataIn);
-        vpi_printf("Data In: %f\n", *InputCast);
+        vpi_printf("Address %d Data In: %f\n", CurrentValue, *InputCast);
+        Buffer[CurrentValue] = *InputCast;
+
 
         if(CurrentValue == READ_DATA_CYCLE) {
           val_State.value.integer = 2;
@@ -95,8 +136,6 @@ static int module_calltf(char* user_data) {
           CurrentValue = CurrentValue + 1;
           val_Counter.value.integer = CurrentValue;
           val_Address.value.integer = CurrentValue;
-          
-
         }
 
         if(CurrentValue == 1)
@@ -105,6 +144,24 @@ static int module_calltf(char* user_data) {
       break;
     }
     case COMPUTE:{
+      int CurrentValue = m_Counter;
+        
+      if(CurrentValue == 0)
+        vpi_printf("\nCompute Barycentric Phase.\n");  
+
+
+      if(CurrentValue == COMPUTE_CYCLE){
+        val_State.value.integer = 0;
+        val_Request.value.integer = 0;
+        val_Counter.value.integer = 0;
+      }
+
+      vpi_printf("Address %d Data In: %f\n", CurrentValue, Buffer[CurrentValue]);
+
+      CurrentValue = CurrentValue + 1;
+      val_Counter.value.integer = CurrentValue;
+
+
 
       break;
     }
@@ -140,9 +197,9 @@ void module_register() {
   tf_data.user_data = 0;
   vpi_register_systf(&tf_data);
 
-  Buffer = (int*)malloc(BUFFER_SIZE * sizeof(int));
+  Buffer = (float*)malloc(BUFFER_SIZE * sizeof(float));
   for(int idx = 0 ; idx < BUFFER_SIZE ; idx ++){
-    Buffer[idx] = 10 - idx;
+    Buffer[idx] = 0.0f;
   }
 
 }
