@@ -184,10 +184,13 @@ static int module_calltf(char* user_data) {
     case WRITE_OUT:{
 
       int CurrentValue = m_Counter;
-      val_WriteProjEn.value.integer = 0;
+
+      val_WriteProjEn.value.integer = 1;
       CurrentValue = CurrentValue + 1;
       val_DataOut.value.integer = CurrentValue;
       val_Counter.value.integer = CurrentValue;
+      val_Address.value.integer = CurrentValue;
+      val_Request.value.integer = 1;
 
       break;
     }
@@ -206,7 +209,7 @@ static int module_calltf(char* user_data) {
   vpi_put_value(h_Counter, &val_Counter, NULL, vpiNoDelay);
   vpi_put_value(h_Start, &val_Start, NULL, vpiNoDelay);
   vpi_put_value(h_Request, &val_Request, NULL, vpiNoDelay);
-  vpi_put_value(h_WriteProjEn, &val_WriteProjEn, NULL, vpiNoDelay);
+  vpi_put_value(h_WriteProjEn, &val_WriteProjEn, NULL, vpiNoDelay); //vpiInertialDelay
   vpi_put_value(h_DataOut, &val_DataOut, NULL, vpiNoDelay);
   
   vpi_free_object(args_iter);

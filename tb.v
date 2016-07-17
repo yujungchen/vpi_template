@@ -44,9 +44,12 @@ module TopModule();
 	
 	// InputBuffer
 	wire [31:0] m_Buf_rData;
+	wire m_Buf_En;
 
 	// ProjVtxBuffer
 	wire [31:0] m_ProjBuf_rData;
+	wire m_ProjBuf_En;
+
 
 	assign m_BusArbiterVec = {m_PseudoVtxBufSel, m_BaryRequest, 6'b0};
 
