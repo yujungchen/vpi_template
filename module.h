@@ -3,17 +3,21 @@
 
 #define READ_DATA_CYCLE 8
 #define COMPUTE_CYCLE 16
+#define WRITE_DATA_CYCLE 8
 
 #define WIDTH 512
 #define HEIGHT 512
 
 #define BUFFER_SIZE 16
+
 extern float *Buffer;
+extern int *ProjBuffer;
 
 typedef enum {
   IDLE = 0, 
   COLLECT = 1,
-  COMPUTE = 2
+  COMPUTE = 2,
+  WRITE_OUT = 3
 } BarycentricState;
 
 typedef struct _Vec3{

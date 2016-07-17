@@ -54,12 +54,12 @@ static int module_compiletf(char* user_data) {
 
 static int module_calltf(char* user_data) {
 
-  int m_Address, m_DataIn, m_State, m_Counter, m_Start, m_Request;
+  int m_Address, m_DataIn, m_State, m_Counter, m_Start, m_Request, m_WriteProjEn, m_DataOut;
   vpiHandle systfref;
   vpiHandle args_iter;
 
-  vpiHandle h_Address, h_DataIn, h_State, h_Counter, h_Start, h_Request;
-  struct t_vpi_value val_Address, val_DataIn, val_State, val_Counter, val_Start, val_Request;
+  vpiHandle h_Address, h_DataIn, h_State, h_Counter, h_Start, h_Request, h_WriteProjEn, h_DataOut;
+  struct t_vpi_value val_Address, val_DataIn, val_State, val_Counter, val_Start, val_Request, val_WriteProjEn, val_DataOut;
 
   // Parse Verilog Input  
   systfref = vpi_handle(vpiSysTfCall, NULL);
@@ -100,6 +100,18 @@ static int module_calltf(char* user_data) {
   val_Request.format = vpiIntVal;
   vpi_get_value(h_Request, &val_Request);
   m_Request = val_Request.value.integer;
+
+  // Write Proj Vtx Enable
+  h_WriteProjEn = vpi_scan(args_iter);
+  val_WriteProjEn.format = vpiIntVal;
+  vpi_get_value(h_WriteProjEn, &val_WriteProjEn);
+  m_WriteProjEn = val_WriteProjEn.value.integer;
+
+  // DataOut
+  h_DataOut = vpi_scan(args_iter);
+  val_DataOut.format = vpiIntVal;
+  vpi_get_value(h_DataOut, &val_DataOut);
+  m_DataOut = val_DataOut.value.integer;
   // Parse Verilog Input
 
   //vpi_printf("\nCall module done. %d\n", argval_1.value.integer);
@@ -110,7 +122,7 @@ static int module_calltf(char* user_data) {
     case IDLE:{
 
       if(m_Start == 1) {
-        val_State.value.integer = 1;
+        val_State.value.integer = COLLECT;
       }
       else {
         val_State.value.integer = 0;
@@ -133,9 +145,11 @@ static int module_calltf(char* user_data) {
         Buffer[CurrentValue] = *InputCast;
 
         if(CurrentValue == READ_DATA_CYCLE) {
-          val_State.value.integer = 2;
+          val_State.value.integer = COMPUTE;
           val_Request.value.integer = 0;
           val_Counter.value.integer = 0;
+
+
         }
         else {          
           CurrentValue = CurrentValue + 1;
@@ -152,21 +166,32 @@ static int module_calltf(char* user_data) {
         vpi_printf("\nCompute Barycentric Phase.\n");  
 
 
-      if(CurrentValue == COMPUTE_CYCLE){
-        val_State.value.integer = 0;
+      if(CurrentValue == COMPUTE_CYCLE - 1){
+        val_State.value.integer = WRITE_OUT;
+        val_WriteProjEn.value.integer = 1;
         val_Request.value.integer = 0;
         val_Counter.value.integer = 0;
+        break;
       }
 
-      vpi_printf("Address %d Data In: %f\n", CurrentValue, Buffer[CurrentValue]);
+      //vpi_printf("Address %d Data In: %f\n", CurrentValue, Buffer[CurrentValue]);
 
       CurrentValue = CurrentValue + 1;
       val_Counter.value.integer = CurrentValue;
 
+      break;
+    }
+    case WRITE_OUT:{
 
+      int CurrentValue = m_Counter;
+      val_WriteProjEn.value.integer = 0;
+      CurrentValue = CurrentValue + 1;
+      val_DataOut.value.integer = CurrentValue;
+      val_Counter.value.integer = CurrentValue;
 
       break;
     }
+
     default:{
       vpi_printf("What the hell!\n");
       break;
@@ -181,6 +206,8 @@ static int module_calltf(char* user_data) {
   vpi_put_value(h_Counter, &val_Counter, NULL, vpiNoDelay);
   vpi_put_value(h_Start, &val_Start, NULL, vpiNoDelay);
   vpi_put_value(h_Request, &val_Request, NULL, vpiNoDelay);
+  vpi_put_value(h_WriteProjEn, &val_WriteProjEn, NULL, vpiNoDelay);
+  vpi_put_value(h_DataOut, &val_DataOut, NULL, vpiNoDelay);
   
   vpi_free_object(args_iter);
 
@@ -200,8 +227,10 @@ void module_register() {
   vpi_register_systf(&tf_data);
 
   Buffer = (float*)malloc(BUFFER_SIZE * sizeof(float));
+  ProjBuffer = (int*)malloc(BUFFER_SIZE * sizeof(int));
   for(int idx = 0 ; idx < BUFFER_SIZE ; idx ++){
     Buffer[idx] = 0.0f;
+    ProjBuffer[idx] = 0;
   }
 
 }

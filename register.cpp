@@ -3,6 +3,8 @@
 
 
 float *Buffer;
+int *ProjBuffer;
+
 
 
 static int fn_compiletf(char* user_data) {

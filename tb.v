@@ -27,11 +27,13 @@ module TopModule();
 
 	// Barycentric Unit
 	reg [3:0] m_BaryAddress;	
-	reg [1:0] m_BaryMonitor;
+	reg [2:0] m_BaryMonitor;
 	reg [7:0] m_BaryCounter;
+	reg [31:0] m_BaryWriteData;
 	reg m_BaryStart;
 	reg m_BaryRequest;
 	reg m_BarySel;
+	reg m_BrayWriteProjEn;
 
 	// Pseudo Bus Master Assignment
 	reg [3:0] m_PseudoAddress;
@@ -40,12 +42,16 @@ module TopModule();
 	reg m_PseudoVtxBufSel;
 
 	
-	// Buffer
+	// InputBuffer
 	wire [31:0] m_Buf_rData;
+
+	// ProjVtxBuffer
+	wire [31:0] m_ProjBuf_rData;
 
 	assign m_BusArbiterVec = {m_PseudoVtxBufSel, m_BaryRequest, 6'b0};
 
-	vtxbuffer Exp(.clk(m_clk), .reset(m_rst), .write(m_Write), .en(m_Enable), .Addr(m_Address), .wData(m_WriteData), .rData(m_Buf_rData));
+	vtxbuffer InputBuffer(.clk(m_clk), .reset(m_rst), .write(m_Write), .en(m_Enable), .Addr(m_Address), .wData(m_WriteData), .rData(m_Buf_rData));
+	vtxbuffer ProjVtxBuffer(.clk(m_clk), .reset(m_rst), .write(m_Write), .en(m_Enable), .Addr(m_Address), .wData(m_WriteData), .rData(m_ProjBuf_rData));
 
 	// Create Clock
 	always begin 
@@ -63,6 +69,7 @@ module TopModule();
 			8'b01000000 : begin
 				m_Address = m_BaryAddress;
 				m_ReadData = m_Buf_rData;
+				m_WriteData = m_BaryWriteData;
 			end
 			default : begin
 				m_Address = 4'b0;
@@ -75,7 +82,7 @@ module TopModule();
 	always @ (posedge m_clk) begin
 		if(!m_rst) begin
 			//$display("%dns", $time);
-			$CallModule(m_BaryAddress, m_ReadData, m_BaryMonitor, m_BaryCounter, m_BaryStart, m_BaryRequest);
+			$CallModule(m_BaryAddress, m_ReadData, m_BaryMonitor, m_BaryCounter, m_BaryStart, m_BaryRequest, m_BrayWriteProjEn, m_BaryWriteData);
 		end
 	end
 
@@ -90,6 +97,10 @@ module TopModule();
 		m_BaryMonitor = 2'b0;
 		m_BaryCounter = 7'b0;
 		m_BaryStart = 1'b0;
+		m_BrayWriteProjEn = 1'b0;
+		m_BaryWriteData = 32'b0;
+
+
 		m_PseudoVtxBufSel = 1'b0;
 		$Test_Connection;
 
