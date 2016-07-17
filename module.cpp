@@ -108,10 +108,9 @@ static int module_calltf(char* user_data) {
 
   switch(m_State) {
     case IDLE:{
-      
+
       if(m_Start == 1) {
         val_State.value.integer = 1;
-        val_Request.value.integer = 1;
       }
       else {
         val_State.value.integer = 0;
@@ -122,24 +121,27 @@ static int module_calltf(char* user_data) {
     case COLLECT:{
         int CurrentValue = m_Counter;
 
+        
+        if(CurrentValue == 0 && val_Start.value.integer == 1) { 
+          val_Start.value.integer = 0;
+          val_Request.value.integer = 1;
+          break;
+        }
+
         InputCast = (float*)(&m_DataIn);
         vpi_printf("Address %d Data In: %f\n", CurrentValue, *InputCast);
         Buffer[CurrentValue] = *InputCast;
-
 
         if(CurrentValue == READ_DATA_CYCLE) {
           val_State.value.integer = 2;
           val_Request.value.integer = 0;
           val_Counter.value.integer = 0;
         }
-        else {
+        else {          
           CurrentValue = CurrentValue + 1;
           val_Counter.value.integer = CurrentValue;
           val_Address.value.integer = CurrentValue;
         }
-
-        if(CurrentValue == 1)
-          val_Start.value.integer = 0;
       
       break;
     }
