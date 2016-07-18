@@ -49,8 +49,6 @@ void ComputeCoefficient(float *x10, float *x20, float *y10, float *y20, float *d
   ProjBuffer[7] = Proj_Vtx[2].y;
   ProjBuffer[8] = Proj_Vtx[2].z;
   
-
-
   *x10 = Proj_Vtx[1].x - Proj_Vtx[0].x;
   *x20 = Proj_Vtx[2].x - Proj_Vtx[0].x;
 
@@ -202,11 +200,17 @@ static int module_calltf(char* user_data) {
         //vpi_printf("Address %d Data In: %f %d\n", CurrentValue, Buffer[CurrentValue], *FormatCast);
 
         ComputeCoefficient(&x10, &x20, &y10, &y20, &det);
-        //for(int idx = 0 ; idx < BUFFER_SIZE ; idx++){
-        //  int *FormatCast;
-        //  FormatCast = (int*)(&ProjBuffer[idx]);
-        //  vpi_printf("Address %d Data In: %f %d\n", idx, ProjBuffer[idx], *FormatCast);
-        //}
+        ProjBuffer[9] = x10;
+        ProjBuffer[10] = x20;
+        ProjBuffer[11] = y10;
+        ProjBuffer[12] = y20;
+        ProjBuffer[13] = det;
+        for(int idx = 0 ; idx < BUFFER_SIZE ; idx++){
+          int *FormatCast;
+          FormatCast = (int*)(&ProjBuffer[idx]);
+          vpi_printf("Address %d Data In: %f %d\n", idx, ProjBuffer[idx], *FormatCast);
+        }
+
         val_DataOut.value.integer = *FormatCast;
         break;
       }
