@@ -11,7 +11,8 @@
 #define BUFFER_SIZE 16
 
 extern float *Buffer;
-extern int *ProjBuffer;
+extern float *ProjBuffer;
+extern float x10, x20, y10, y20, det;
 
 typedef enum {
   IDLE = 0, 

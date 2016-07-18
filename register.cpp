@@ -3,7 +3,8 @@
 
 
 float *Buffer;
-int *ProjBuffer;
+float *ProjBuffer;
+float x10, x20, y10, y20, det;
 
 
 

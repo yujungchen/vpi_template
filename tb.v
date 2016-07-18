@@ -22,7 +22,7 @@ module TopModule();
 	reg [31:0] m_WriteData;
 	reg [31:0] m_ReadData;
 	reg m_Enable;
-	reg m_Write;
+	
 	wire [7:0] m_BusArbiterVec;
 
 	// Barycentric Unit
@@ -31,9 +31,10 @@ module TopModule();
 	reg [7:0] m_BaryCounter;
 	reg [31:0] m_BaryWriteData;
 	reg m_BaryStart;
-	reg m_BaryRequest;
+	reg m_BaryVtxBuf_En;
+	reg m_BaryProjVtxBuf_En;
+	reg m_BaryWrite;
 	reg m_BarySel;
-	reg m_BrayWriteProjEn;
 
 	// Pseudo Bus Master Assignment
 	reg [3:0] m_PseudoAddress;
@@ -44,30 +45,72 @@ module TopModule();
 	
 	// InputBuffer
 	wire [31:0] m_Buf_rData;
-	wire m_Buf_En;
+	reg m_Buf_En;
+	reg m_Buf_Write;
+	wire [1:0] m_Buf_Vec;
 
 	// ProjVtxBuffer
 	wire [31:0] m_ProjBuf_rData;
-	wire m_ProjBuf_En;
+	reg m_ProjBuf_En;
+	reg m_ProjBuf_Write;
+	wire [1:0] m_ProjBuf_Vec;
+	
 
 
-	assign m_BusArbiterVec = {m_PseudoVtxBufSel, m_BaryRequest, 6'b0};
+	assign m_BusArbiterVec = {m_PseudoVtxBufSel, m_BarySel, 6'b0};
 
-	vtxbuffer InputBuffer(.clk(m_clk), .reset(m_rst), .write(m_Write), .en(m_Enable), .Addr(m_Address), .wData(m_WriteData), .rData(m_Buf_rData));
-	vtxbuffer ProjVtxBuffer(.clk(m_clk), .reset(m_rst), .write(m_Write), .en(m_Enable), .Addr(m_Address), .wData(m_WriteData), .rData(m_ProjBuf_rData));
+	vtxbuffer InputBuffer(.clk(m_clk), .reset(m_rst), .write(m_Buf_Write), .en(m_Buf_En), .Addr(m_Address), .wData(m_WriteData), .rData(m_Buf_rData));
+	vtxbuffer ProjVtxBuffer(.clk(m_clk), .reset(m_rst), .write(m_ProjBuf_Write), .en(m_ProjBuf_En), .Addr(m_Address), .wData(m_WriteData), .rData(m_ProjBuf_rData));
 
 	// Create Clock
 	always begin 
 		#(`CYCLE/2) m_clk <= ~m_clk; 
 	end
 
+	// Mux for Input Buffer
+	assign m_Buf_Vec = {m_PseudoVtxBufSel, m_BaryVtxBuf_En};
+	always @ (*) begin
+		case (m_Buf_Vec)
+			2'b10 : begin
+				m_Buf_En = m_PseudoVtxBufSel;
+				m_Buf_Write = m_PseudoWrite;
+			end
+			2'b01 : begin
+				m_Buf_En = m_BaryVtxBuf_En;
+				m_Buf_Write = m_BaryWrite;
+			end
+			default : begin
+				m_Buf_En = 1'b0;
+				m_Buf_Write = 1'b0;
+			end
+		endcase
+	end
+	
+	// Mux for ProjVtx Buffer
+	assign m_ProjBuf_Vec = {m_BaryProjVtxBuf_En, 1'b0};
+	always @ (*) begin
+		case (m_ProjBuf_Vec)
+			2'b10 : begin
+				m_ProjBuf_En = m_BaryProjVtxBuf_En;
+				m_ProjBuf_Write = m_BaryWrite;
+			end
+			2'b01 : begin
+				m_ProjBuf_En = 1'b0;
+				m_ProjBuf_Write = 1'b0;
+			end
+			default : begin
+				m_ProjBuf_En = 1'b0;
+				m_ProjBuf_Write = 1'b0;
+			end
+		endcase
+	end
+	
 	// Assign arbitration
 	always @ (*) begin
 		case (m_BusArbiterVec)
 			8'b10000000 : begin 
 				m_Address = m_PseudoAddress;
 				m_WriteData = m_PseudoData;
-				m_Write = m_PseudoWrite;
 			end
 			8'b01000000 : begin
 				m_Address = m_BaryAddress;
@@ -85,7 +128,7 @@ module TopModule();
 	always @ (posedge m_clk) begin
 		if(!m_rst) begin
 			//$display("%dns", $time);
-			$CallModule(m_BaryAddress, m_ReadData, m_BaryMonitor, m_BaryCounter, m_BaryStart, m_BaryRequest, m_BrayWriteProjEn, m_BaryWriteData);
+			$CallModule(m_BaryAddress, m_ReadData, m_BaryMonitor, m_BaryCounter, m_BaryStart, m_BaryVtxBuf_En, m_BaryProjVtxBuf_En, m_BaryWriteData, m_BaryWrite);
 		end
 	end
 
@@ -96,15 +139,18 @@ module TopModule();
 
 		m_clk = 1'b0;
 		m_rst = 1'b1;
-		m_BaryRequest = 1'b0;
+		m_BaryVtxBuf_En = 1'b0;
 		m_BaryMonitor = 2'b0;
 		m_BaryCounter = 7'b0;
 		m_BaryStart = 1'b0;
-		m_BrayWriteProjEn = 1'b0;
+		m_BaryProjVtxBuf_En = 1'b0;
 		m_BaryWriteData = 32'b0;
+		m_BaryWrite = 1'b0;
+		m_BarySel = 1'b0;
 
 
 		m_PseudoVtxBufSel = 1'b0;
+		m_PseudoWrite = 1'b0;
 		$Test_Connection;
 
 		#(`CYCLE)	m_rst = 1'b0;
@@ -136,10 +182,11 @@ module TopModule();
 					m_PseudoData = 32'h00000000;
 		#(`CYCLE)	m_PseudoWrite = 1'b0;
 					
-		
+		#(`CYCLE)	m_PseudoVtxBufSel = 1'b0;
 		// Start Compuitng Barycentrci Coefficient
-		#(`CYCLE * 2)	m_BaryStart = 1'b1;
-						m_PseudoVtxBufSel = 1'b0;
+		#(`CYCLE)	m_BaryStart = 1'b1;
+					m_BarySel = 1'b1;
+						
 
 		
 
