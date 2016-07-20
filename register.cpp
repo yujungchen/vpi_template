@@ -1,11 +1,10 @@
 #include  <vpi_user.h>
 #include "module.h"
-
+#include "tiling.h"
 
 float *Buffer;
 float *ProjBuffer;
 float x10, x20, y10, y20, det;
-
 
 
 static int fn_compiletf(char* user_data) {
@@ -32,5 +31,6 @@ void fn_register() {
 void (*vlog_startup_routines[])() = {
   fn_register,
   module_register,
+  tile_module_register,
   0
 };

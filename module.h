@@ -31,4 +31,4 @@ static int module_compiletf(char* user_data);
 static int module_calltf(char* user_data);
 void module_register();
 Vec3 VireportTran(Vec3 Vtx);
-void ComputeCoefficient(float *x10, float *x20, float *y10, float *y20, float *det);
+void ComputeCoefficient(float *_x10, float *_x20, float *_y10, float *_y20, float *_det);

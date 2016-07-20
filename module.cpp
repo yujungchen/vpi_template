@@ -16,7 +16,7 @@ Vec3 VireportTran(Vec3 Vtx) {
   return Proj_Vtx;
 }
 
-void ComputeCoefficient(float *x10, float *x20, float *y10, float *y20, float *det) {
+void ComputeCoefficient(float *_x10, float *_x20, float *_y10, float *_y20, float *_det) {
 
   Vec3 Vtx[3];
   Vec3 Proj_Vtx[3];
@@ -49,13 +49,13 @@ void ComputeCoefficient(float *x10, float *x20, float *y10, float *y20, float *d
   ProjBuffer[7] = Proj_Vtx[2].y;
   ProjBuffer[8] = Proj_Vtx[2].z;
   
-  *x10 = Proj_Vtx[1].x - Proj_Vtx[0].x;
-  *x20 = Proj_Vtx[2].x - Proj_Vtx[0].x;
+  *_x10 = Proj_Vtx[1].x - Proj_Vtx[0].x;
+  *_x20 = Proj_Vtx[2].x - Proj_Vtx[0].x;
 
-  *y10 = Proj_Vtx[1].y - Proj_Vtx[0].y;
-  *y20 = Proj_Vtx[2].y - Proj_Vtx[0].y;
+  *_y10 = Proj_Vtx[1].y - Proj_Vtx[0].y;
+  *_y20 = Proj_Vtx[2].y - Proj_Vtx[0].y;
 
-  *det = (*x10) * (*y20) - (*x20) * (*y10);
+  *_det = (*_x10) * (*_y20) - (*_x20) * (*_y10);
   //vpi_printf("%f %f %f %f %f\n", *x10, *x20, *y10, *y20, *det);
 }
 
@@ -68,12 +68,12 @@ static int module_compiletf(char* user_data) {
 
 static int module_calltf(char* user_data) {
 
-  int m_Address, m_DataIn, m_State, m_Counter, m_Start, m_VtxBuf_En, m_WriteProjEn, m_DataOut, m_Write;
+  int m_Address, m_DataIn, m_State, m_Counter, m_Start, m_VtxBuf_En, m_WriteProjEn, m_DataOut, m_Write, m_TilingStart;
   vpiHandle systfref;
   vpiHandle args_iter;
 
-  vpiHandle h_Address, h_DataIn, h_State, h_Counter, h_Start, h_VtxBuf_En, h_WriteProjEn, h_DataOut, h_Write;
-  struct t_vpi_value val_Address, val_DataIn, val_State, val_Counter, val_Start, val_VtxBuf_En, val_WriteProjEn, val_DataOut, val_Write;
+  vpiHandle h_Address, h_DataIn, h_State, h_Counter, h_Start, h_VtxBuf_En, h_WriteProjEn, h_DataOut, h_Write, h_TilingStart;
+  struct t_vpi_value val_Address, val_DataIn, val_State, val_Counter, val_Start, val_VtxBuf_En, val_WriteProjEn, val_DataOut, val_Write, val_TilingStart;
 
   // Parse Verilog Input  
   systfref = vpi_handle(vpiSysTfCall, NULL);
@@ -132,6 +132,13 @@ static int module_calltf(char* user_data) {
   val_Write.format = vpiIntVal;
   vpi_get_value(h_Write, &val_Write);
   m_Write = val_Write.value.integer;
+
+  // Tiling Start Signal
+  h_TilingStart = vpi_scan(args_iter);
+  val_TilingStart.format = vpiIntVal;
+  vpi_get_value(h_TilingStart, &val_TilingStart);
+  m_TilingStart = val_TilingStart.value.integer;
+  
   // Parse Verilog Input
 
   //vpi_printf("\nCall module done. %d\n", argval_1.value.integer);
@@ -149,7 +156,7 @@ static int module_calltf(char* user_data) {
       val_Counter.value.integer = 0;
       val_DataOut.value.integer = 0;
       val_Address.value.integer = 0;
-
+      val_TilingStart.value.integer = 0;
       break;
     }
     case COLLECT:{
@@ -206,7 +213,6 @@ static int module_calltf(char* user_data) {
         ProjBuffer[12] = y20;
         ProjBuffer[13] = det;
         for(int idx = 0 ; idx < BUFFER_SIZE ; idx++){
-          int *FormatCast;
           FormatCast = (int*)(&ProjBuffer[idx]);
           vpi_printf("Address %d Data In: %f %d\n", idx, ProjBuffer[idx], *FormatCast);
         }
@@ -242,7 +248,7 @@ static int module_calltf(char* user_data) {
         val_DataOut.value.integer = 0;
         val_Address.value.integer = 0;
         val_Write.value.integer = 0;
-
+        val_TilingStart.value.integer = 1;
         //vpi_printf("%f %f %f %f %f\n", x10, x20, y10, y20, det);
         break;
       }
@@ -268,7 +274,9 @@ static int module_calltf(char* user_data) {
   vpi_put_value(h_WriteProjEn, &val_WriteProjEn, NULL, vpiNoDelay); //vpiInertialDelay
   vpi_put_value(h_DataOut, &val_DataOut, NULL, vpiNoDelay);
   vpi_put_value(h_Write, &val_Write, NULL, vpiNoDelay);
-  
+  vpi_put_value(h_TilingStart, &val_TilingStart, NULL, vpiNoDelay);
+
+
   vpi_free_object(args_iter);
 
   return 0;

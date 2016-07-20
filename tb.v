@@ -2,17 +2,6 @@
 `define CYCLE 10
 
 module TopModule();
-	
-	/*
-	0 for VtxBuffer (RTL)
-	1 for Barycentric unit (C++)
-	2 for ProjVtxBuffer (RTL)
-	3 for CoefficientBuffer (RTL)
-	4 for Tiling Unit (C++)
-	5 for TileIndexBuffer (RTL)
-	6 for Interpolation Unit (RTL)
-	*/
-
 
 	// System Signal
 	reg m_rst;
@@ -21,7 +10,7 @@ module TopModule();
 	reg [3:0] m_Address;
 	reg [31:0] m_WriteData;
 	reg [31:0] m_ReadData;
-	reg m_Enable;
+
 	
 	wire [7:0] m_BusArbiterVec;
 
@@ -42,7 +31,6 @@ module TopModule();
 	reg m_PseudoWrite;
 	reg m_PseudoVtxBufSel;
 
-	
 	// InputBuffer
 	wire [31:0] m_Buf_rData;
 	reg m_Buf_En;
@@ -54,10 +42,23 @@ module TopModule();
 	reg m_ProjBuf_En;
 	reg m_ProjBuf_Write;
 	wire [1:0] m_ProjBuf_Vec;
+
+	// Tiling Unit
+	reg [3:0] m_TileAddress;	
+	reg [2:0] m_TileMonitor;
+	reg [7:0] m_TileCounter;
+	reg [31:0] m_TileWriteData;
+	reg m_TileStart;
+	reg m_TileProjVtxBuf_En;
+	reg m_TileWrite;
+	reg m_TileSel;
+
+	wire m_TriggerTiling;
+	assign m_TriggerTiling = m_TileStart;
 	
 
 
-	assign m_BusArbiterVec = {m_PseudoVtxBufSel, m_BarySel, 6'b0};
+	assign m_BusArbiterVec = {m_PseudoVtxBufSel, m_BarySel, m_TileSel, 5'b0};
 
 	vtxbuffer InputBuffer(.clk(m_clk), .reset(m_rst), .write(m_Buf_Write), .en(m_Buf_En), .Addr(m_Address), .wData(m_WriteData), .rData(m_Buf_rData));
 	vtxbuffer ProjVtxBuffer(.clk(m_clk), .reset(m_rst), .write(m_ProjBuf_Write), .en(m_ProjBuf_En), .Addr(m_Address), .wData(m_WriteData), .rData(m_ProjBuf_rData));
@@ -87,7 +88,7 @@ module TopModule();
 	end
 	
 	// Mux for ProjVtx Buffer
-	assign m_ProjBuf_Vec = {m_BaryProjVtxBuf_En, 1'b0};
+	assign m_ProjBuf_Vec = {m_BaryProjVtxBuf_En, m_TileProjVtxBuf_En};
 	always @ (*) begin
 		case (m_ProjBuf_Vec)
 			2'b10 : begin
@@ -95,8 +96,8 @@ module TopModule();
 				m_ProjBuf_Write = m_BaryWrite;
 			end
 			2'b01 : begin
-				m_ProjBuf_En = 1'b0;
-				m_ProjBuf_Write = 1'b0;
+				m_ProjBuf_En = m_TileProjVtxBuf_En;
+				m_ProjBuf_Write = m_TileWrite;
 			end
 			default : begin
 				m_ProjBuf_En = 1'b0;
@@ -117,6 +118,11 @@ module TopModule();
 				m_ReadData = m_Buf_rData;
 				m_WriteData = m_BaryWriteData;
 			end
+			8'b00100000 : begin
+				m_Address = m_TileAddress;
+				m_ReadData = m_ProjBuf_rData;
+				m_WriteData = m_TileWriteData;
+			end
 			default : begin
 				m_Address = 4'b0;
 				m_ReadData = 32'b0;
@@ -128,7 +134,8 @@ module TopModule();
 	always @ (posedge m_clk) begin
 		if(!m_rst) begin
 			//$display("%dns", $time);
-			$CallModule(m_BaryAddress, m_ReadData, m_BaryMonitor, m_BaryCounter, m_BaryStart, m_BaryVtxBuf_En, m_BaryProjVtxBuf_En, m_BaryWriteData, m_BaryWrite);
+			$CallModule(m_BaryAddress, m_ReadData, m_BaryMonitor, m_BaryCounter, m_BaryStart, m_BaryVtxBuf_En, m_BaryProjVtxBuf_En, m_BaryWriteData, m_BaryWrite, m_TileStart);
+			$Tiling;
 		end
 	end
 
@@ -147,6 +154,10 @@ module TopModule();
 		m_BaryWriteData = 32'b0;
 		m_BaryWrite = 1'b0;
 		m_BarySel = 1'b0;
+		m_TileSel = 1'b0;
+
+
+		m_TileProjVtxBuf_En = 1'b0;
 
 
 		m_PseudoVtxBufSel = 1'b0;
@@ -156,8 +167,7 @@ module TopModule();
 		#(`CYCLE)	m_rst = 1'b0;
 
 		// Write Data into Vtx Buffer
-		#15 		m_Enable = 1'b1;
-					m_PseudoWrite = 1'b1;
+		#15 		m_PseudoWrite = 1'b1;
 					m_PseudoVtxBufSel = 1'b1;
 					//Vtx1
 					m_PseudoAddress = 4'd0;
