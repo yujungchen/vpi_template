@@ -2,3 +2,6 @@ This repo is a simple vpi framework using c/c++ code for RTL simulation to abstr
 
 The simulation environment compiles verilog code with iverilog, and gtkwave to visulaize the waveform. 
 
+* Note : When compiling the cpp files using "iverilog-vpi", the first argument should be the major registration function (e.g. register.cpp), then the other cpp files.
+
+(iverilog-vpi register.cpp module.cpp tiling.cpp)
