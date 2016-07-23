@@ -135,9 +135,11 @@ module TopModule();
 		if(!m_rst) begin
 			//$display("%dns", $time);
 			$CallModule(m_BaryAddress, m_ReadData, m_BaryMonitor, m_BaryCounter, m_BaryStart, m_BaryVtxBuf_En, m_BaryProjVtxBuf_En, m_BaryWriteData, m_BaryWrite, m_TileStart);
-			$Tiling;
+			$Tiling(m_TileStart, m_TileAddress, m_TileWriteData, m_ReadData, m_TileMonitor, m_TileCounter, m_TileProjVtxBuf_En, m_TileWrite);
 		end
 	end
+
+
 
 	// Fire
 	initial begin
@@ -155,6 +157,8 @@ module TopModule();
 		m_BaryWrite = 1'b0;
 		m_BarySel = 1'b0;
 		m_TileSel = 1'b0;
+		m_TileWrite = 1'b0;
+		m_TileMonitor = 2'b0;
 
 
 		m_TileProjVtxBuf_En = 1'b0;

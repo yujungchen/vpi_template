@@ -1,14 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define READ_DATA_CYCLE 8
-#define COMPUTE_CYCLE 16
-#define WRITE_DATA_CYCLE 8
 
-#define WIDTH 512
-#define HEIGHT 512
-
-#define BUFFER_SIZE 16
 
 extern float *Buffer;
 extern float *ProjBuffer;

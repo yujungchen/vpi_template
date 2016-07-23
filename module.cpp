@@ -1,6 +1,14 @@
 #include  <vpi_user.h>
 #include "module.h"
 
+#define READ_DATA_CYCLE 8
+#define COMPUTE_CYCLE 16
+#define WRITE_DATA_CYCLE 8
+
+#define WIDTH 512
+#define HEIGHT 512
+
+#define BUFFER_SIZE 16
 
 Vec3 VireportTran(Vec3 Vtx) {
   Vec3 Proj_Vtx;
@@ -170,7 +178,7 @@ static int module_calltf(char* user_data) {
         }
 
         InputCast = (float*)(&m_DataIn);
-        vpi_printf("Address %d Data In: %f\n", CurrentValue, *InputCast);
+        //vpi_printf("Address %d Data In: %f\n", CurrentValue, *InputCast);
         Buffer[CurrentValue] = *InputCast;
 
         if(CurrentValue == READ_DATA_CYCLE) {
@@ -212,10 +220,10 @@ static int module_calltf(char* user_data) {
         ProjBuffer[11] = y10;
         ProjBuffer[12] = y20;
         ProjBuffer[13] = det;
-        for(int idx = 0 ; idx < BUFFER_SIZE ; idx++){
-          FormatCast = (int*)(&ProjBuffer[idx]);
-          vpi_printf("Address %d Data In: %f %d\n", idx, ProjBuffer[idx], *FormatCast);
-        }
+        //for(int idx = 0 ; idx < BUFFER_SIZE ; idx++){
+          //FormatCast = (int*)(&ProjBuffer[idx]);
+          //vpi_printf("Address %d Data In: %f %d\n", idx, ProjBuffer[idx], *FormatCast);
+        //}
 
         val_DataOut.value.integer = *FormatCast;
         break;
