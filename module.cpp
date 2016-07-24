@@ -5,9 +5,6 @@
 #define COMPUTE_CYCLE 16
 #define WRITE_DATA_CYCLE 8
 
-#define WIDTH 512
-#define HEIGHT 512
-
 #define BUFFER_SIZE 16
 
 Vec3 VireportTran(Vec3 Vtx) {
@@ -76,12 +73,12 @@ static int module_compiletf(char* user_data) {
 
 static int module_calltf(char* user_data) {
 
-  int m_Address, m_DataIn, m_State, m_Counter, m_Start, m_VtxBuf_En, m_WriteProjEn, m_DataOut, m_Write, m_TilingStart;
+  int m_Address, m_DataIn, m_State, m_Counter, m_Start, m_VtxBuf_En, m_WriteProjEn, m_DataOut, m_Write, m_TilingStart, m_Sel;
   vpiHandle systfref;
   vpiHandle args_iter;
 
-  vpiHandle h_Address, h_DataIn, h_State, h_Counter, h_Start, h_VtxBuf_En, h_WriteProjEn, h_DataOut, h_Write, h_TilingStart;
-  struct t_vpi_value val_Address, val_DataIn, val_State, val_Counter, val_Start, val_VtxBuf_En, val_WriteProjEn, val_DataOut, val_Write, val_TilingStart;
+  vpiHandle h_Address, h_DataIn, h_State, h_Counter, h_Start, h_VtxBuf_En, h_WriteProjEn, h_DataOut, h_Write, h_TilingStart, h_Sel;
+  struct t_vpi_value val_Address, val_DataIn, val_State, val_Counter, val_Start, val_VtxBuf_En, val_WriteProjEn, val_DataOut, val_Write, val_TilingStart, val_Sel;
 
   // Parse Verilog Input  
   systfref = vpi_handle(vpiSysTfCall, NULL);
@@ -146,6 +143,12 @@ static int module_calltf(char* user_data) {
   val_TilingStart.format = vpiIntVal;
   vpi_get_value(h_TilingStart, &val_TilingStart);
   m_TilingStart = val_TilingStart.value.integer;
+
+  // Tiling Start Signal
+  h_Sel = vpi_scan(args_iter);
+  val_Sel.format = vpiIntVal;
+  vpi_get_value(h_Sel, &val_Sel);
+  m_Sel = val_Sel.value.integer;
   
   // Parse Verilog Input
 
@@ -157,14 +160,16 @@ static int module_calltf(char* user_data) {
 
       if(m_Start == 1) {
         val_State.value.integer = COLLECT;
+        val_Sel.value.integer = 1;
       }
       else {
         val_State.value.integer = 0;
+        val_Sel.value.integer = 0;
       }
       val_Counter.value.integer = 0;
       val_DataOut.value.integer = 0;
       val_Address.value.integer = 0;
-      val_TilingStart.value.integer = 0;
+
       break;
     }
     case COLLECT:{
@@ -257,6 +262,7 @@ static int module_calltf(char* user_data) {
         val_Address.value.integer = 0;
         val_Write.value.integer = 0;
         val_TilingStart.value.integer = 1;
+        val_Sel.value.integer = 0;
         //vpi_printf("%f %f %f %f %f\n", x10, x20, y10, y20, det);
         break;
       }
@@ -283,7 +289,8 @@ static int module_calltf(char* user_data) {
   vpi_put_value(h_DataOut, &val_DataOut, NULL, vpiNoDelay);
   vpi_put_value(h_Write, &val_Write, NULL, vpiNoDelay);
   vpi_put_value(h_TilingStart, &val_TilingStart, NULL, vpiNoDelay);
-
+  vpi_put_value(h_Sel, &val_Sel, NULL, vpiNoDelay);
+  
 
   vpi_free_object(args_iter);
 

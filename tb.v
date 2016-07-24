@@ -134,8 +134,8 @@ module TopModule();
 	always @ (posedge m_clk) begin
 		if(!m_rst) begin
 			//$display("%dns", $time);
-			$CallModule(m_BaryAddress, m_ReadData, m_BaryMonitor, m_BaryCounter, m_BaryStart, m_BaryVtxBuf_En, m_BaryProjVtxBuf_En, m_BaryWriteData, m_BaryWrite, m_TileStart);
-			$Tiling(m_TileStart, m_TileAddress, m_TileWriteData, m_ReadData, m_TileMonitor, m_TileCounter, m_TileProjVtxBuf_En, m_TileWrite);
+			$CallModule(m_BaryAddress, m_ReadData, m_BaryMonitor, m_BaryCounter, m_BaryStart, m_BaryVtxBuf_En, m_BaryProjVtxBuf_En, m_BaryWriteData, m_BaryWrite, m_TileStart, m_BarySel);
+			$Tiling(m_TileStart, m_TileAddress, m_TileWriteData, m_ReadData, m_TileMonitor, m_TileCounter, m_TileProjVtxBuf_En, m_TileWrite, m_TileSel);
 		end
 	end
 
@@ -199,12 +199,12 @@ module TopModule();
 		#(`CYCLE)	m_PseudoVtxBufSel = 1'b0;
 		// Start Compuitng Barycentrci Coefficient
 		#(`CYCLE)	m_BaryStart = 1'b1;
-					m_BarySel = 1'b1;
+					//m_BarySel = 1'b1;
 						
 
 		
 
-		#1000 $finish;
+		#10000 $finish;
 	end
 
 endmodule

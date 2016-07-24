@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include "global.h"
 
 
+#pragma once
 
 extern float *Buffer;
 extern float *ProjBuffer;
@@ -14,11 +16,6 @@ typedef enum {
   WRITE_OUT = 3
 } BarycentricState;
 
-typedef struct _Vec3{
-  float x;
-  float y;
-  float z;
-} Vec3;
 
 static int module_compiletf(char* user_data);
 static int module_calltf(char* user_data);
