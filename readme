@@ -5,3 +5,7 @@ The simulation environment compiles verilog code with iverilog, and gtkwave to v
 * Note : When compiling the cpp files using "iverilog-vpi", the first argument should be the major registration function (e.g. register.cpp), then the other cpp files.
 
 (iverilog-vpi register.cpp module.cpp tiling.cpp)
+
+This example can raster a triangle, well, functionally. (Because I apply some dirty work on it.)
+
+A triangle, literally means A triangle. I didn't test the buffering mechanism.
