@@ -1,4 +1,5 @@
-#include  <vpi_user.h>
+#include <vpi_user.h>
+#include <math.h>
 #include "tiling.h"
 
 #define READ_DATA_CYCLE 16
@@ -27,14 +28,42 @@ int EndTileY;
 
 int Tid_X;
 int Tid_Y;
+int NextTid_X;
+int NextTid_Y;
+
+int Pid_X;
+int Pid_Y;
+
 
 typedef enum {
   IDLE = 0, 
   COLLECT = 1,
   COMPUTE_BOUND = 2,
-  COMPUTE_TID = 3
+  COMPUTE_TID = 3,
+  COMPUTE_PID = 4
 } TilingState;
 
+
+bool ComputeCoef(int *Q_Alpha, int *Q_Beta, int *Q_Gamma, int x, int y) {
+  bool valid = false;
+  int Scale = (int)pow(2.0f, 16.0f);
+  
+  float xp0 = ((float)x + 0.5f) - ProjVtx[0].x;
+  float yp0 = ((float)y + 0.5f) - ProjVtx[0].y;
+  float beta = (xp0 * _y20 - yp0 * _x20) / _det;
+  float gamma = (_x10 * yp0 - _y10 * xp0) / _det;
+  float alpha = 1.0f - beta - gamma;
+
+  if (alpha < 1.0f && beta < 1.0f && gamma < 1.0f){
+    if (alpha > 0.0f && beta > 0.0f && gamma > 0.0f){
+      valid = true;
+      *Q_Alpha = alpha * Scale;
+      *Q_Beta = beta * Scale;
+      *Q_Gamma = gamma * Scale;
+    }
+  }
+  return valid;
+}
 
 static int tile_module_compiletf(char* user_data) {
   return 0;
@@ -43,11 +72,19 @@ static int tile_module_compiletf(char* user_data) {
 static int tile_module_calltf(char* user_data) {
  	
  	  int m_TilingStart, m_Address, m_DataOut, m_DataIn, m_State, m_Counter, m_TileProjEn, m_Write, m_Sel;
+    int m_Alpha_Q, m_Beta_Q, m_Gamma_Q, m_InterpolateEn;
+    int m_X, m_Y;
+
  	  vpiHandle systfref;
  	  vpiHandle args_iter;
 
   	vpiHandle h_TilingStart, h_Address, h_DataOut, h_DataIn, h_State, h_Counter, h_TileProjEn, h_Write, h_Sel;
+    vpiHandle h_Alpha_Q, h_Beta_Q, h_Gamma_Q, h_InterpolateEn;
+    vpiHandle h_X, h_Y;
+
   	struct t_vpi_value val_TilingStart, val_Address, val_DataOut, val_DataIn, val_State, val_Counter, val_TileProjEn, val_Write, val_Sel;
+    struct t_vpi_value val_Alpha_Q, val_Beta_Q, val_Gamma_Q, val_InterpolateEn;
+    struct t_vpi_value val_X, val_Y;
 
   	// Parse Verilog Input  
   	systfref = vpi_handle(vpiSysTfCall, NULL);
@@ -106,6 +143,43 @@ static int tile_module_calltf(char* user_data) {
     val_Sel.format = vpiIntVal;
     vpi_get_value(h_Sel, &val_Sel);
     m_Sel = val_Sel.value.integer;
+
+    // Alpha
+    h_Alpha_Q = vpi_scan(args_iter);
+    val_Alpha_Q.format = vpiIntVal;
+    vpi_get_value(h_Alpha_Q, &val_Alpha_Q);
+    m_Alpha_Q = val_Alpha_Q.value.integer;
+
+    // Beta
+    h_Beta_Q = vpi_scan(args_iter);
+    val_Beta_Q.format = vpiIntVal;
+    vpi_get_value(h_Beta_Q, &val_Beta_Q);
+    m_Beta_Q = val_Beta_Q.value.integer;
+    
+    // Gamma
+    h_Gamma_Q = vpi_scan(args_iter);
+    val_Gamma_Q.format = vpiIntVal;
+    vpi_get_value(h_Gamma_Q, &val_Gamma_Q);
+    m_Gamma_Q = val_Gamma_Q.value.integer;
+    
+    // Interpolate Enable
+    h_InterpolateEn = vpi_scan(args_iter);
+    val_InterpolateEn.format = vpiIntVal;
+    vpi_get_value(h_InterpolateEn, &val_InterpolateEn);
+    m_InterpolateEn = val_InterpolateEn.value.integer;
+
+    // X
+    h_X = vpi_scan(args_iter);
+    val_X.format = vpiIntVal;
+    vpi_get_value(h_X, &val_X);
+    m_X = val_X.value.integer;
+
+    // Y
+    h_Y = vpi_scan(args_iter);
+    val_Y.format = vpiIntVal;
+    vpi_get_value(h_Y, &val_Y);
+    m_Y = val_Y.value.integer;
+
 
   	switch(m_State) {
 		  case IDLE:{
@@ -201,32 +275,84 @@ static int tile_module_calltf(char* user_data) {
         StartTileY = (int)(Min_Y / (float)TILE_SIZE);
         EndTileX = (int)(Max_X / (float)TILE_SIZE) + 1;
         EndTileY = (int)(Max_Y / (float)TILE_SIZE) + 1;
-        vpi_printf("(%d %d) (%d %d)\n", StartTileX, EndTileX, StartTileY, EndTileY);
+        //vpi_printf("(%d %d) (%d %d)\n", StartTileX, EndTileX, StartTileY, EndTileY);
 
         Tid_X = StartTileX;
         Tid_Y = StartTileY;
+
+        NextTid_X = Tid_X;
+        NextTid_Y = Tid_Y;
 
         val_State.value.integer = COMPUTE_TID;
         break;
 		  }
 		  case COMPUTE_TID:{
 
-
         if(Tid_X < EndTileX && Tid_Y < EndTileY){
           val_State.value.integer = COMPUTE_TID;
-          vpi_printf("(%d %d)\n", Tid_X, Tid_Y);
+          //vpi_printf("\n(%d %d)\n", Tid_X, Tid_Y);
           
-          Tid_X++;
-          if(Tid_X == EndTileX){
-            Tid_X = StartTileX;
-            Tid_Y++;
+          NextTid_X++;
+          if(NextTid_X == EndTileX){
+            NextTid_X = StartTileX;
+            NextTid_Y++;
           }
+
+          val_State.value.integer = COMPUTE_PID;
+          Pid_X = Tid_X * TILE_SIZE;
+          Pid_Y = Tid_Y * TILE_SIZE;
+          val_Counter.value.integer = 0;
+
         }
         else{
           val_State.value.integer = IDLE;
+          //pi_printf("\n");
         }
         break;
 		  }
+      case COMPUTE_PID:{
+        //vpi_printf("(%d %d)\n", Tid_X, Tid_Y);
+        int Inner_X = m_Counter % TILE_SIZE;
+        int Inner_Y = m_Counter / TILE_SIZE;
+        //vpi_printf("(%d %d)", Inner_X, Inner_Y);
+        
+        if(Inner_X < TILE_SIZE && Inner_Y < TILE_SIZE){
+          //vpi_printf("%d (%d %d)\n", m_Counter, Inner_X, Inner_Y);
+
+          int x = Inner_X + Pid_X;
+          int y = Inner_Y + Pid_Y;
+          int _Alpha = 0;
+          int _Beta = 0;
+          int _Gamma = 0;
+          bool ValidPxl = false;
+          ValidPxl = ComputeCoef(&_Alpha, &_Beta, &_Gamma, x, y);
+          //vpi_printf("%d %d %d\n", _Alpha, _Beta, _Gamma);
+
+          val_Alpha_Q.value.integer = _Alpha;
+          val_Beta_Q.value.integer = _Beta;
+          val_Gamma_Q.value.integer = _Gamma;
+          val_InterpolateEn.value.integer = (ValidPxl == true) ? 1 : 0; 
+
+
+          val_Counter.value.integer = m_Counter + 1;
+          val_State.value.integer = COMPUTE_PID;
+
+          val_X.value.integer = x;
+          val_Y.value.integer = y;
+          //vpi_printf("%d (%d %d)\n", m_Counter, x, y);
+
+          
+        }
+        else{
+          val_InterpolateEn.value.integer = 0;
+          val_State.value.integer = COMPUTE_TID;
+          Tid_X = NextTid_X;
+          Tid_Y = NextTid_Y;
+          val_Counter.value.integer = 0;
+        }
+
+        break;
+      }
 		  default:{
       		vpi_printf("What the hell!\n");
       		break;
@@ -243,6 +369,14 @@ static int tile_module_calltf(char* user_data) {
     vpi_put_value(h_TileProjEn, &val_TileProjEn, NULL, vpiNoDelay);
     vpi_put_value(h_Write, &val_Write, NULL, vpiNoDelay);
     vpi_put_value(h_Sel, &val_Sel, NULL, vpiNoDelay);
+
+    vpi_put_value(h_Alpha_Q, &val_Alpha_Q, NULL, vpiNoDelay);
+    vpi_put_value(h_Beta_Q, &val_Beta_Q, NULL, vpiNoDelay);
+    vpi_put_value(h_Gamma_Q, &val_Gamma_Q, NULL, vpiNoDelay);
+    vpi_put_value(h_InterpolateEn, &val_InterpolateEn, NULL, vpiNoDelay);
+
+    vpi_put_value(h_X, &val_X, NULL, vpiNoDelay);
+    vpi_put_value(h_Y, &val_Y, NULL, vpiNoDelay);
     
     vpi_free_object(args_iter);
     

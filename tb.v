@@ -53,15 +53,33 @@ module TopModule();
 	reg m_TileWrite;
 	reg m_TileSel;
 
+	reg [31:0] m_X;
+	reg [31:0] m_Y;
+
+	reg [15:0] m_Alpha;
+	reg [15:0] m_Beta;
+	reg [15:0] m_Gamma;
+	reg m_InterpolateEN;
+
 	wire m_TriggerTiling;
 	assign m_TriggerTiling = m_TileStart;
 	
+
+	// Interpolation Unit
+	wire [7:0] m_R;
+	wire [7:0] m_G;
+	wire [7:0] m_B;
+
+	Interpolator BaryInterpolation(.enable(m_InterpolateEN), .Alpha(m_Alpha), .Beta(m_Beta), .Gamma(m_Gamma), .R(m_R), .G(m_G), .B(m_B));
+
 
 
 	assign m_BusArbiterVec = {m_PseudoVtxBufSel, m_BarySel, m_TileSel, 5'b0};
 
 	vtxbuffer InputBuffer(.clk(m_clk), .reset(m_rst), .write(m_Buf_Write), .en(m_Buf_En), .Addr(m_Address), .wData(m_WriteData), .rData(m_Buf_rData));
 	vtxbuffer ProjVtxBuffer(.clk(m_clk), .reset(m_rst), .write(m_ProjBuf_Write), .en(m_ProjBuf_En), .Addr(m_Address), .wData(m_WriteData), .rData(m_ProjBuf_rData));
+
+
 
 	// Create Clock
 	always begin 
@@ -135,8 +153,34 @@ module TopModule();
 		if(!m_rst) begin
 			//$display("%dns", $time);
 			$CallModule(m_BaryAddress, m_ReadData, m_BaryMonitor, m_BaryCounter, m_BaryStart, m_BaryVtxBuf_En, m_BaryProjVtxBuf_En, m_BaryWriteData, m_BaryWrite, m_TileStart, m_BarySel);
-			$Tiling(m_TileStart, m_TileAddress, m_TileWriteData, m_ReadData, m_TileMonitor, m_TileCounter, m_TileProjVtxBuf_En, m_TileWrite, m_TileSel);
+			$Tiling(m_TileStart, m_TileAddress, m_TileWriteData, m_ReadData, m_TileMonitor, m_TileCounter, m_TileProjVtxBuf_En, m_TileWrite, m_TileSel, 
+				m_Alpha, m_Beta, m_Gamma, m_InterpolateEN, 
+				m_X, m_Y);
 		end
+	end
+
+
+	parameter OptFile = "data.txt";
+	integer out;
+	initial begin
+		out = $fopen (OptFile, "w" );
+		$display ("File %s is open", OptFile);
+
+		//$fclose(out);
+     end
+
+	always @ (*) begin
+		if(m_TileMonitor == 3'b100 && m_TileCounter > 0) begin
+			if(m_InterpolateEN) begin
+				$fwrite(out, "%d %d 1 %d %d %d\n", m_X, m_Y, m_R, m_G, m_B);
+				//$display("%d %d", m_X, m_Y);
+			end
+			else begin
+				$fwrite(out, "%d %d 0 %d %d %d\n", m_X, m_Y, m_R, m_G, m_B);
+				//$display("%d %d", m_X, m_Y);
+			end
+		end
+		
 	end
 
 
@@ -204,7 +248,9 @@ module TopModule();
 
 		
 
-		#10000 $finish;
+		#1500000 $finish;
 	end
+
+
 
 endmodule
